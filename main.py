@@ -1,55 +1,10 @@
-# import sys
-# import os
-
-# # Add the parent directory to Python's module search path
-# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-# from ai_service.question_generator import generate_follow_up_questions
-# from ai_service.scorer import calculate_transparency_score
-# from backend.schemas import ProductEntry
-
-# from fastapi import FastAPI
-# from pydantic import BaseModel
-# from fastapi.middleware.cors import CORSMiddleware
-
-# app = FastAPI()
-
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=["*"],
-#     allow_methods=["*"],
-#     allow_headers=["*"]
-# )
-
-# class ProductEntry(BaseModel):
-#     product_name: str
-#     category: str
-#     ingredients: str = ""
-#     origin: str = ""
-#     certifications: str = ""
-
-# @app.post("/generate-questions")
-# def generate_questions(product: ProductEntry):
-#     questions = generate_follow_up_questions(product)
-#     return {"follow_up_questions": questions}
-
-# @app.post("/transparency-score")
-# def get_transparency_score(product: ProductEntry):
-#     result = calculate_transparency_score(product)
-#     return result
-
-
-
-
 import os
-import sys
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
 
-from transformers import T5Tokenizer, T5ForConditionalGeneration, pipeline
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
 
 # ----------------------------
 # Schema (ProductEntry)
@@ -66,9 +21,9 @@ class ProductEntry(BaseModel):
 # Question Generation Model
 # ----------------------------
 
-model_name = "valhalla/t5-base-qg-hl"
-tokenizer = T5Tokenizer.from_pretrained(model_name)
-model = T5ForConditionalGeneration.from_pretrained(model_name)
+MODEL_NAME = os.getenv("QG_MODEL", "google/flan-t5-small")  # fallback model
+tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+model = AutoModelForSeq2SeqLM.from_pretrained(MODEL_NAME)
 
 question_generator = pipeline(
     "text2text-generation",
@@ -148,3 +103,7 @@ def generate_questions(product: ProductEntry):
 @app.post("/transparency-score")
 def get_transparency_score(product: ProductEntry):
     return calculate_transparency_score(product)
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
